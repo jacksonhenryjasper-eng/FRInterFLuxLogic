@@ -1,5 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from pathlib import Path
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
@@ -11,6 +15,8 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     # Startup
     print("AI Bridge SaaS starting up...")
+    from app.services.app_discovery import app_registry
+    app_registry.scan()
     yield
     # Shutdown
     print("AI Bridge SaaS shutting down...")
@@ -40,6 +46,10 @@ app.include_router(integrations.router, prefix="/api/integrations", tags=["Integ
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Bridge"])
 app.include_router(apps.router, prefix="/api/apps", tags=["Applications"])
 
+frontend_path = Path(__file__).resolve().parents[2] / "frontend"
+if frontend_path.is_dir():
+    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
 # Health check
 @app.get("/health")
 async def health_check():
@@ -52,11 +62,10 @@ async def health_check():
 # Root endpoint
 @app.get("/")
 async def root():
-    return {
-        "message": "AI Bridge SaaS API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    index_path = frontend_path / "index.html"
+    if index_path.is_file():
+        return FileResponse(index_path)
+    return {"message": "AI Bridge SaaS API", "version": "1.0.0", "docs": "/docs"}
 
 if __name__ == "__main__":
     import uvicorn
