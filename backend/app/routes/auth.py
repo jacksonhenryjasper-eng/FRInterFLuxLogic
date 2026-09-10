@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from app.controllers.auth_controller import AuthController
 
@@ -17,4 +17,7 @@ async def generate_api_key(request: ApiKeyRequest):
 @router.get("/validate")
 async def validate_api_key(x_api_key: str = Header(...)):
     """Validate an API key"""
-    return auth_controller.validate_api_key(x_api_key)
+    try:
+        return auth_controller.validate_api_key(x_api_key)
+    except ValueError as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
